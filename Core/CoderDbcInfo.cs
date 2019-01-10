@@ -11,9 +11,18 @@ namespace CoderDbc.Core
     {
         static CoderDbcInfo()
         {
-            Vers = Assembly.GetCallingAssembly().GetName().Version;
+            try
+            {
+                Vers = Assembly.GetAssembly(typeof(CoderDbcInfo)).GetName().Version;
+            }
+            catch (Exception e)
+            {
+                 Status = e.Message;
+            }
         }
+
         public static Version Vers { get; }
+        public static String Status { get; }
     }
 
 }
