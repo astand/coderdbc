@@ -136,6 +136,6 @@ namespace CoderDbc.Core
 
         Commenter commenter = new Commenter();
         ValParser valuator = new ValParser();
-        Regex regSigStart = new Regex(@"(^\s + SG_)");
+        Regex regSigStart = new Regex(@"(^\s+SG_)");
     }
 }
