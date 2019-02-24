@@ -42,7 +42,7 @@ namespace CoderDbc.Core
                     }
                 }
 
-                if (regSigStart.IsMatch(line) && ( msgDesc != null))
+                if (regSigStart.IsMatch(line) && (msgDesc != null))
                 {
                     var sig = new SignalBitsDesc();
                     sig.ParseFromVectorDbcString(line);
@@ -89,6 +89,29 @@ namespace CoderDbc.Core
                                 if (sig != null)
                                 {
                                     sig.CommentText = commenter.Info.Text;
+
+                                    if (sig.CommentText.Contains(RollingCounterMatch))
+                                    {
+                                        if (msg.RollSig == null)
+                                            msg.RollSig = sig;
+                                    }
+                                    else if (sig.CommentText.Contains(ChecksumMatch))
+                                    {
+                                        if (msg.CsmSig == null)
+                                        {
+                                            msg.CsmType = "kCrcUndefined";
+                                            if (sig.CommentText.Contains("SAEJ1850"))
+                                            {
+                                                msg.CsmType = "kSAEJ1850";
+
+                                            }
+                                            else if (sig.CommentText.Contains("xor8"))
+                                            {
+                                                msg.CsmType = "kXOR8";
+                                            }
+                                            msg.CsmSig = sig;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -137,5 +160,9 @@ namespace CoderDbc.Core
         Commenter commenter = new Commenter();
         ValParser valuator = new ValParser();
         Regex regSigStart = new Regex(@"(^\s+SG_)");
+        public string RollingCounterMatch { get; set; } = "Rolling Counter ";
+        public string ChecksumMatch { get; set; } = "Checksum ";
+        public bool IsRollingCounterCodeAvailalbe { get; set; } = false;
+        public bool IsChecksumMatchCodeAvailable { get; set; } = false;
     }
 }

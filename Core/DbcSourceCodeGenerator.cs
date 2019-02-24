@@ -54,8 +54,27 @@ namespace CoderDbc.Core
                 }
             }
 
+            // check_sum_error
+            if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
+            {
+                srcContent.body.AppendLine($"  // rolling counter validation. The bit @roll_error is 1 when rolling failure.");
+                srcContent.body.AppendLine($"  _m->mon1.roll_error = (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
+                srcContent.body.Append($"  _m->mon1.roll_expect = ((_m->{msg.RollSig.FieldName} + 1) & ");
+                srcContent.body.AppendLine($"0x{((Int32)Math.Pow(2, msg.RollSig.LengthBit) - 1).ToString("X2")}U);");
+                srcContent.body.AppendLine();
+            }
+
+            if (msg.CsmSig != null && msg.CsmSig.LengthBit == 8)
+            {
+                srcContent.body.AppendLine("  // make chesksum validation");
+                srcContent.body.Append($"  _m->mon1.csm_error = (GetCrcValueForArray(_d, ");
+                srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
+                srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
+                srcContent.body.AppendLine();
+            }
+            
             if (CodeSett.NeedFrameCounting)
-                srcContent.body.AppendLine("  _m->framecnt++;");
+                srcContent.body.AppendLine("  _m->mon1.framecnt++;");
 
             srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
         }
@@ -94,6 +113,24 @@ namespace CoderDbc.Core
             headContent.head.AppendLine($"#include <stdint.h>");
             headContent.head.AppendLine();
             srcContent.head.AppendLine("#include \"" + incName.ToLower() + ".h\"");
+            srcContent.head.AppendLine();
+            srcContent.head.AppendLine();
+            srcContent.head.AppendLine("// If your CAN matrix has the messages that must be controlled with @Checksum calculation ");
+            srcContent.head.AppendLine("// then the calculation function must be presented in your code : ");
+            srcContent.head.AppendLine("// ");
+            srcContent.head.AppendLine("// uint8_t GetCrcValueForArray(const uint8_t* d, uint8_t len, uint32_t method, uint8_t op);");
+            srcContent.head.AppendLine("// ");
+            srcContent.head.AppendLine("// where :");
+            srcContent.head.AppendLine("// d - array for CRC calculation");
+            srcContent.head.AppendLine("// len - amount of bytes for calculation");
+            srcContent.head.AppendLine("// method - CRC algorythm. It can be enum value or define and must be defined outside this scope");
+            srcContent.head.AppendLine("// op - not defined yet");
+            srcContent.head.AppendLine(@"// You need to create the ""cancrcconf.h"". This file must include methods defines and function signature");
+            srcContent.head.AppendLine();
+            srcContent.head.AppendLine("// !Attention: this file is shared between all the DbcCode sources.");
+            srcContent.head.AppendLine();
+            srcContent.head.AppendLine(@"#include ""cancrcconf.h"" ");
+            srcContent.head.AppendLine();
             srcContent.head.AppendLine();
 
             foreach (var msg in messages)

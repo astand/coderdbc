@@ -108,6 +108,10 @@ namespace CoderDbc.Models
 
         public string PrintMsgIDValue => $"0x{(MessageId & 0x1fffFFFF).ToString("X")}U";
 
+        public SignalBitsDesc RollSig { get; internal set; }
+
+        public SignalBitsDesc CsmSig { get; internal set; }
+        public string CsmType { get; internal set; }
 
         static readonly string VectorMessageDbcPattern = @"[^A-Za-z0-9_.-]";
 
