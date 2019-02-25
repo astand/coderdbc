@@ -58,7 +58,7 @@ namespace CoderDbc.Core
             if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
             {
                 srcContent.body.AppendLine($"  // rolling counter validation. The bit @roll_error is 1 when rolling failure.");
-                srcContent.body.AppendLine($"  _m->mon1.roll_error = (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
+                srcContent.body.AppendLine($"  _m->mon1.roll_error |= (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
                 srcContent.body.Append($"  _m->mon1.roll_expect = ((_m->{msg.RollSig.FieldName} + 1) & ");
                 srcContent.body.AppendLine($"0x{((Int32)Math.Pow(2, msg.RollSig.LengthBit) - 1).ToString("X2")}U);");
             }
@@ -66,12 +66,12 @@ namespace CoderDbc.Core
             if (msg.CsmSig != null && msg.CsmSig.LengthBit == 8)
             {
                 srcContent.body.AppendLine("  // make chesksum validation");
-                srcContent.body.Append($"  _m->mon1.checksum_error = (GetCrcValueForArray(_d, ");
+                srcContent.body.Append($"  _m->mon1.checksum_error |= (GetCrcValueForArray(_d, ");
                 srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
                 srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
             }
 
-            srcContent.body.Append($"  _m->mon1.last_cycle = GetSystem100usTick();");
+            srcContent.body.AppendLine($"  _m->mon1.last_cycle = GetSystem100usTick();");
 
             if (CodeSett.NeedFrameCounting)
                 srcContent.body.AppendLine("  _m->mon1.frame_cnt++;");
