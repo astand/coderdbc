@@ -58,15 +58,15 @@ namespace CoderDbc.Core
             if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
             {
                 srcContent.body.AppendLine($"  // rolling counter validation. The bit @roll_error is 1 when rolling failure.");
-                srcContent.body.AppendLine($"  _m->mon1.roll_error |= (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
+                srcContent.body.AppendLine($"  _m->mon1.roll_error = (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
                 srcContent.body.Append($"  _m->mon1.roll_expect = ((_m->{msg.RollSig.FieldName} + 1) & ");
                 srcContent.body.AppendLine($"0x{((Int32)Math.Pow(2, msg.RollSig.LengthBit) - 1).ToString("X2")}U);");
             }
 
-            if (msg.CsmSig != null && msg.CsmSig.LengthBit == 8)
+            if (msg.CsmSig != null && msg.CsmSig.LengthBit <= 8)
             {
                 srcContent.body.AppendLine("  // make chesksum validation");
-                srcContent.body.Append($"  _m->mon1.checksum_error |= (GetCrcValueForArray(_d, ");
+                srcContent.body.Append($"  _m->mon1.checksum_error = (GetCrcValueForArray(_d, ");
                 srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
                 srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
             }
@@ -246,7 +246,8 @@ extern ""C"" {
 enum DbcCanCrcMethods {
   kCRCUndefined = 0,
   kSAEJ1850 = 1,
-  kXOR8 = 2
+  kXOR8 = 2,
+  kXOR4 = 3
 };
 
 typedef struct {
@@ -288,6 +289,8 @@ uint8_t GetCrcValueForArray(const uint8_t* d, uint8_t len, uint32_t method, uint
 // this function will be called when unpacking is performing. Value will be saved
 // in @last_cycle variable
 uint32_t GetSystem100usTick(void);
+
+void StepSystem100usTick(uint32_t _100us);
 
 #ifdef __cplusplus
 }
