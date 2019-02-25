@@ -51,7 +51,8 @@ namespace CoderDbc.Core
                 ret.High = new ConditionalTree()
                 {
                     conditionalType = ConditionalType.Express,
-                    Code = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d);"
+                    UtilCodeBody = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d); " +
+                                   $"_m->csm_bit = _m->{msg.MessageName}.mon1.checksum_error; _m->roll_bit = _m->{msg.MessageName}.mon1.roll_error;"
                 };
                 return ret;
             }
@@ -74,7 +75,8 @@ namespace CoderDbc.Core
                 ret.conditionalType = ConditionalType.Express;
                 var msg = list[l];
                 ret.ConditionExpresion = "_id == " + msg.PrintMsgIDValue;
-                ret.Code = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d);";
+                ret.UtilCodeBody = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d); ";
+                ret.UtilCodeBody += $"_m->csm_bit = _m->{msg.MessageName}.mon1.checksum_error; _m->roll_bit = _m->{msg.MessageName}.mon1.roll_error;";
             }
 
             return ret;

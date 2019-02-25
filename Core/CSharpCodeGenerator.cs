@@ -121,7 +121,7 @@ namespace CoderDbc.Core
                 ret.conditionalType = ConditionalType.Express;
                 var msg = list[l];
                 ret.ConditionExpresion = "_id == " + msg.PrintMsgIDValue;
-                ret.Code = $"Unpack_{msg.MessageName}_{FuncUtilName}(" + $"(_m.{msg.MessageName}), _d); ret = 1;";
+                ret.UtilCodeBody = $"Unpack_{msg.MessageName}_{FuncUtilName}(" + $"(_m.{msg.MessageName}), _d); ret = 1;";
             }
 
             return ret;

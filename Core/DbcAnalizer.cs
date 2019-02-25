@@ -109,6 +109,10 @@ namespace CoderDbc.Core
                                             {
                                                 msg.CsmType = "kXOR8";
                                             }
+                                            else if (sig.CommentText.Contains("XOR4"))
+                                            {
+                                                msg.CsmType = "kXOR4";
+                                            }
 
                                             msg.CsmSig = sig;
                                         }

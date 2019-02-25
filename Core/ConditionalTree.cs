@@ -21,7 +21,7 @@ namespace CoderDbc.Core
 
         public string ConditionExpresion { get; set; }
 
-        public string Code { get; set; }
+        public string UtilCodeBody { get; set; }
     };
 
     public class ConditionalTreeCWriter
@@ -32,35 +32,35 @@ namespace CoderDbc.Core
             {
                 if (tree.conditionalType == ConditionalType.Cond)
                 {
-                    PrintCode("".PadRight(indent) + $"if ({tree.ConditionExpresion}) {{");
+                    PrintCode($"if ({tree.ConditionExpresion}) {{", indent);
                     WriteCode(tree.High, indent + 1);
 
                     if (tree.Low != null)
                     {
                         if (tree.Low.conditionalType == ConditionalType.Express)
                         {
-                            PrintCode("".PadRight(indent) + $"}} else if ({tree.Low.ConditionExpresion}) {{");
+                            PrintCode($"}} else if ({tree.Low.ConditionExpresion}) {{", indent);
                         }
                         else
                         {
-                            PrintCode("".PadRight(indent) + "} else {");
+                            PrintCode("} else {", indent);
                         }
 
                         WriteCode(tree.Low, indent + 1);
                     }
                     else
                     {
-                        PrintCode("".PadRight(indent) + "}");
+                        PrintCode("}", indent);
                     }
 
                     if (tree.Low != null)
                     {
-                        PrintCode("".PadRight(indent) + "}");
+                        PrintCode("}", indent);
                     }
                 }
                 else
                 {
-                    PrintCode("".PadRight(indent) + $"{tree.Code}");
+                    PrintCode($"{tree.UtilCodeBody}", indent);
                 }
             }
 
@@ -74,8 +74,9 @@ namespace CoderDbc.Core
             sb.Clear();
         }
 
-        void PrintCode(string s)
+        void PrintCode(string s, int indent)
         {
+            s = "".PadRight(indent) + s;
             Debug.WriteLine(s);
             sb.AppendLine(s);
         }
