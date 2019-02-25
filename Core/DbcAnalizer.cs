@@ -90,25 +90,26 @@ namespace CoderDbc.Core
                                 {
                                     sig.CommentText = commenter.Info.Text;
 
-                                    if (sig.CommentText.Contains(RollingCounterMatch))
+                                    if (IsRollingCounterCodeAvailalbe && sig.CommentText.Contains(RollingCounterMatch))
                                     {
                                         if (msg.RollSig == null)
                                             msg.RollSig = sig;
                                     }
-                                    else if (sig.CommentText.Contains(ChecksumMatch))
+                                    else if (IsChecksumMatchCodeAvailable && sig.CommentText.Contains(ChecksumMatch))
                                     {
                                         if (msg.CsmSig == null)
                                         {
-                                            msg.CsmType = "kCrcUndefined";
+                                            msg.CsmType = "kCRCUndefined";
+
                                             if (sig.CommentText.Contains("SAEJ1850"))
                                             {
                                                 msg.CsmType = "kSAEJ1850";
-
                                             }
-                                            else if (sig.CommentText.Contains("xor8"))
+                                            else if (sig.CommentText.Contains("XOR8"))
                                             {
                                                 msg.CsmType = "kXOR8";
                                             }
+
                                             msg.CsmSig = sig;
                                         }
                                     }

@@ -61,20 +61,20 @@ namespace CoderDbc.Core
                 srcContent.body.AppendLine($"  _m->mon1.roll_error = (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
                 srcContent.body.Append($"  _m->mon1.roll_expect = ((_m->{msg.RollSig.FieldName} + 1) & ");
                 srcContent.body.AppendLine($"0x{((Int32)Math.Pow(2, msg.RollSig.LengthBit) - 1).ToString("X2")}U);");
-                srcContent.body.AppendLine();
             }
 
             if (msg.CsmSig != null && msg.CsmSig.LengthBit == 8)
             {
                 srcContent.body.AppendLine("  // make chesksum validation");
-                srcContent.body.Append($"  _m->mon1.csm_error = (GetCrcValueForArray(_d, ");
+                srcContent.body.Append($"  _m->mon1.checksum_error = (GetCrcValueForArray(_d, ");
                 srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
                 srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
-                srcContent.body.AppendLine();
             }
-            
+
+            srcContent.body.Append($"  _m->mon1.last_cycle = GetSystem100usTick();");
+
             if (CodeSett.NeedFrameCounting)
-                srcContent.body.AppendLine("  _m->mon1.framecnt++;");
+                srcContent.body.AppendLine("  _m->mon1.frame_cnt++;");
 
             srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
         }
@@ -110,27 +110,15 @@ namespace CoderDbc.Core
             headContent.head.AppendLine(TemplateSourceInfo.GuardInclude);
             headContent.head.AppendLine(TemplateSourceInfo.CPPGuardOpen);
             srcContent.head.AppendLine();
-            headContent.head.AppendLine($"#include <stdint.h>");
+            headContent.head.AppendLine(@"#include <stdint.h>");
+            headContent.head.AppendLine("");
+            headContent.head.AppendLine("// This file must define:");
+            headContent.head.AppendLine("// base monitor struct");
+            headContent.head.AppendLine("// function signature for CRC calculation");
+            headContent.head.AppendLine("// function signature for getting system tick value (100 us step)");
+            headContent.head.AppendLine(@"#include ""canmonitorutil.h""");
             headContent.head.AppendLine();
             srcContent.head.AppendLine("#include \"" + incName.ToLower() + ".h\"");
-            srcContent.head.AppendLine();
-            srcContent.head.AppendLine();
-            srcContent.head.AppendLine("// If your CAN matrix has the messages that must be controlled with @Checksum calculation ");
-            srcContent.head.AppendLine("// then the calculation function must be presented in your code : ");
-            srcContent.head.AppendLine("// ");
-            srcContent.head.AppendLine("// uint8_t GetCrcValueForArray(const uint8_t* d, uint8_t len, uint32_t method, uint8_t op);");
-            srcContent.head.AppendLine("// ");
-            srcContent.head.AppendLine("// where :");
-            srcContent.head.AppendLine("// d - array for CRC calculation");
-            srcContent.head.AppendLine("// len - amount of bytes for calculation");
-            srcContent.head.AppendLine("// method - CRC algorythm. It can be enum value or define and must be defined outside this scope");
-            srcContent.head.AppendLine("// op - not defined yet");
-            srcContent.head.AppendLine(@"// You need to create the ""cancrcconf.h"". This file must include methods defines and function signature");
-            srcContent.head.AppendLine();
-            srcContent.head.AppendLine("// !Attention: this file is shared between all the DbcCode sources.");
-            srcContent.head.AppendLine();
-            srcContent.head.AppendLine(@"#include ""cancrcconf.h"" ");
-            srcContent.head.AppendLine();
             srcContent.head.AppendLine();
 
             foreach (var msg in messages)
@@ -172,6 +160,24 @@ namespace CoderDbc.Core
             sourceFile.Append(srcContent.body.ToString());
             sourceFile.Append(srcContent.end.ToString());
             PrintSourceText();
+            /* ------------------------------------------------------------------ */
+            monitorFile.Clear();
+            var dt = DateTime.Now;
+            monitorFile.AppendLine($"// Generated at @{dt.ToString("F")}. Ver: 0.1");
+            monitorFile.Append(CanMonitorConfigContent);
+            PrintMonitorText(_files.Dir + "/canmonitorutil.h", monitorFile);
+        }
+
+        private void PrintMonitorText(string v, StringBuilder mfile)
+        {
+            if (File.Exists(v))
+            {
+                File.Delete(v);
+            }
+
+            (File.Create(v)).Close();
+            File.WriteAllText(v, mfile.ToString(), Encoding.UTF8);
+            File.SetAttributes(v, FileAttributes.ReadOnly);
         }
 
         private void PrintHeadTypedef(MessageDescriptor msg)
@@ -219,12 +225,74 @@ namespace CoderDbc.Core
             }
 
             if (CodeSett.NeedFrameCounting)
-                headContent.body.AppendLine("  uint32_t framecnt;");
+                headContent.body.AppendLine("  FrameMonitor_T mon1;");
 
             headContent.body.AppendLine("} " + msg.MessageName + "_t;");
             headContent.body.AppendLine();
         }
 
         CSignalPrinter cprint = new CSignalPrinter();
+        private readonly string CanMonitorConfigContent =
+            @"// This file has the common name. When a few DBC source code drivers are used you need to
+// provide only one copy of it.
+#pragma once
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern ""C"" {
+#endif
+
+enum DbcCanCrcMethods {
+  kCRCUndefined = 0,
+  kSAEJ1850 = 1,
+  kXOR8 = 2
+};
+
+typedef struct {
+  // @last_cycle keeps tick-value when last frame was received
+  uint32_t last_cycle;
+
+  // @timeout_cycle keeps maximum timeout for frame
+  uint32_t timeout_cycle;
+
+  // @frame_cnt keeps count of all the received frames
+  uint32_t frame_cnt;
+
+  // this expected @RC value
+  uint8_t roll_expect;
+
+  // setting up @roll_error bit indicates roll counting fail. Bit is not clearing automatically!
+  uint32_t roll_error : 1;
+
+  // setting up @checksum_error bit indicates checksum checking failure. Bit is not clearing automatically!
+  uint32_t checksum_error : 1;
+
+  // setting up @cycle_error bit indicates that time was overrunned. Bit is not clearing automatically!
+  uint32_t cycle_error : 1;
+
+} FrameMonitor_T;
+
+/* ----------------------------------------------------------------------------- */
+// If your CAN matrix has the messages that must be controlled with @Checksum calculation
+// then the calculation function must be presented in your code :
+
+uint8_t GetCrcValueForArray(const uint8_t* d, uint8_t len, uint32_t method, uint8_t op);
+
+// @d - array for CRC calculation
+// @len - amount of bytes for calculation
+// @method - CRC algorythm. It can be enum value or define and must be defined outside this scope
+// @op - not defined yet
+
+/* ----------------------------------------------------------------------------- */
+// this function will be called when unpacking is performing. Value will be saved
+// in @last_cycle variable
+uint32_t GetSystem100usTick(void);
+
+#ifdef __cplusplus
+}
+#endif
+";
+
     }
 }

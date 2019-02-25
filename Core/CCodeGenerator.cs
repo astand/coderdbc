@@ -69,6 +69,7 @@ namespace CoderDbc.Core
         protected FileSectionPrinter srcContent = new FileSectionPrinter();
         protected StringBuilder headFile = new StringBuilder(100000);
         protected StringBuilder sourceFile = new StringBuilder(100000);
+        protected StringBuilder monitorFile = new StringBuilder(10000);
         protected SourceFileDescriptor _files = new SourceFileDescriptor();
     }
 }
