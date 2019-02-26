@@ -49,5 +49,7 @@ namespace CoderDbc
         [DataMember]
         public List<UInt32> Tx { get; set; } = new List<UInt32>();
 
+        [DataMember]
+        public List<UInt32> NoCode { get; set; } = new List<UInt32>();
     }
 }

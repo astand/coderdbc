@@ -9,7 +9,7 @@ namespace CoderDbc.Models
 {
     public enum Direction
     {
-        None, Tx, Rx, Both
+        None, Tx, Rx, Both, NoCode
     }
 
     public class MessageDescriptor
