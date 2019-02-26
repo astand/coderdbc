@@ -101,17 +101,22 @@ namespace CoderDbc.Core
                                         {
                                             msg.CsmType = "kCRCUndefined";
 
-                                            if (sig.CommentText.Contains("SAEJ1850"))
+                                            if (sig.CommentText.Contains("CRC8_SAEJ1850"))
                                             {
                                                 msg.CsmType = "kSAEJ1850";
                                             }
-                                            else if (sig.CommentText.Contains("XOR8"))
+                                            else if (sig.CommentText.Contains("XOR8_Generic"))
                                             {
                                                 msg.CsmType = "kXOR8";
                                             }
-                                            else if (sig.CommentText.Contains("XOR4"))
+                                            else if (sig.CommentText.Contains("XOR4_generic") || sig.CommentText.Contains("XOR4_SAS"))
                                             {
                                                 msg.CsmType = "kXOR4";
+                                            }
+                                            else if (sig.CommentText.Contains("XOR"))
+                                            {
+                                                // common case for XOR-base algorythms
+                                                msg.CsmType = "kXOR8";
                                             }
 
                                             msg.CsmSig = sig;
