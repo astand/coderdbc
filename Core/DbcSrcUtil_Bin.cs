@@ -20,7 +20,7 @@ namespace CoderDbc.Core
             if (msgs.Count() > 0)
             {
                 tree = FillTreeLevel(orderMsgs, 0, orderMsgs.Count);
-                srcContent.end.AppendLine($"uint32_t {utilName}_Receive({utilName}_{rxSuff}_t* _m, const uint8_t* _d, uint32_t _id)");
+                srcContent.end.AppendLine($"uint32_t {utilName}_Receive({utilName}_{rxSuff}_t* _m, const uint8_t* _d, uint32_t _id, uint8_t dlc_)");
                 srcContent.end.AppendLine("{");
                 srcContent.end.AppendLine(" uint32_t recid = 0;");
                 srcContent.end.AppendLine(writer.WriteCode(tree, 1));
@@ -51,8 +51,8 @@ namespace CoderDbc.Core
                 ret.High = new ConditionalTree()
                 {
                     conditionalType = ConditionalType.Express,
-                    UtilCodeBody = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d); " +
-                                   $"_m->csm_bit = _m->{msg.MessageName}.mon1.checksum_error; _m->roll_bit = _m->{msg.MessageName}.mon1.roll_error;"
+                    UtilCodeBody = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d, dlc_); " +
+                                   $"_m->csm_bit = _m->{msg.MessageName}.mon1.checksum_error; _m->roll_bit = _m->{msg.MessageName}.mon1.roll_error; _m->dlc_error = _m->{msg.MessageName}.mon1.dlc_error;"
                 };
                 return ret;
             }
@@ -75,7 +75,7 @@ namespace CoderDbc.Core
                 ret.conditionalType = ConditionalType.Express;
                 var msg = list[l];
                 ret.ConditionExpresion = "_id == " + msg.PrintMsgIDValue;
-                ret.UtilCodeBody = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d); ";
+                ret.UtilCodeBody = $"recid = Unpack_{msg.MessageName}_{FuncUtilName}(" + @"&" + $"(_m->{msg.MessageName}), _d, dlc_);";
                 ret.UtilCodeBody += $"_m->csm_bit = _m->{msg.MessageName}.mon1.checksum_error; _m->roll_bit = _m->{msg.MessageName}.mon1.roll_error;";
             }
 

@@ -54,7 +54,7 @@ namespace CoderDbc.Core
             if (messages.Where(m => m.direction == Direction.Both || m.direction == Direction.Rx).Count() > 0)
             {
                 headContent.body.AppendLine();
-                headContent.body.AppendLine($"uint32_t {utilName}_Receive({utilName}_{rxSuff}_t* _m, const uint8_t* _d, uint32_t _id);");
+                headContent.body.AppendLine($"uint32_t {utilName}_Receive({utilName}_{rxSuff}_t* _m, const uint8_t* _d, uint32_t _id, uint8_t dlc_);");
                 headContent.body.AppendLine();
                 headContent.body.AppendLine();
             }

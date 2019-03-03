@@ -54,6 +54,8 @@ namespace CoderDbc.Core
                 }
             }
 
+            srcContent.body.AppendLine("  // check DLC correctness");
+            srcContent.body.AppendLine($"  _m->mon1.dlc_error = (dlc_ != {msg.MessageName}_DLC);");
             // check_sum_error
             if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
             {
@@ -126,7 +128,7 @@ namespace CoderDbc.Core
                 srcContent.body.AppendLine("// --------------------------------------------------------------------------");
                 var function = String.Empty;
                 PrintHeadTypedef(msg);
-                function = $"uint32_t Unpack_{msg.MessageName}_{incName}({msg.MessageName}_t* _m, const uint8_t* _d)";
+                function = $"uint32_t Unpack_{msg.MessageName}_{incName}({msg.MessageName}_t* _m, const uint8_t* _d, uint8_t dlc_)";
                 funcSignatures.Add(function + ";");
                 srcContent.body.AppendLine(function);
                 srcContent.body.AppendLine("{");
@@ -225,7 +227,7 @@ namespace CoderDbc.Core
             }
 
             if (CodeSett.NeedFrameCounting)
-                headContent.body.AppendLine("  FrameMonitor_T mon1;");
+                headContent.body.AppendLine("  FrameMonitor_t mon1;");
 
             headContent.body.AppendLine("} " + msg.MessageName + "_t;");
             headContent.body.AppendLine();
@@ -272,7 +274,10 @@ typedef struct {
   // setting up @cycle_error bit indicates that time was overrunned. Bit is not clearing automatically!
   uint32_t cycle_error : 1;
 
-} FrameMonitor_T;
+  // setting up @dlc_error bit indicates that the actual DLC of CAN frame is not equal to defined by CAN matrix!
+  uint32_t dlc_error : 1;
+
+} FrameMonitor_t;
 
 /* ----------------------------------------------------------------------------- */
 // If your CAN matrix has the messages that must be controlled with @Checksum calculation
