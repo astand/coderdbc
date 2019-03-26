@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace CoderDbc.Core
 {
-    public static  class ExtensionsUtil
+    public static class ExtensionsUtil
     {
         public static string ToViewable(this double x)
         {
