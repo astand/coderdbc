@@ -91,10 +91,15 @@ namespace CoderDbc.Core
 
         public bool PassString(string line)
         {
+            var msgIdFromLine = (UInt32)0;
             var strOut = Regex.Matches(line, @"""[^""]+""|[\w]+", RegexOptions.Multiline)
                          .Cast<Match>()
                          .Select(c => c.Value).ToList();
-            MsgId = UInt32.Parse(strOut[1]) & (~(1 << 31));
+
+            if (UInt32.TryParse(strOut[1], out msgIdFromLine) == false)
+                return false;
+
+            MsgId = msgIdFromLine & (~(1 << 31));
             SigName = strOut[2];
             var pairs = (strOut.Count - 3) / 2;
             Text = String.Empty;
