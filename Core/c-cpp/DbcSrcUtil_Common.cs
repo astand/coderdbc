@@ -147,13 +147,6 @@ namespace CoderDbc.Core
                 }
             }
 
-            if (dir == Direction.Rx)
-            {
-                headContent.body.AppendLine("  // service flags for user notification. Notifies about CSM and Rolling errors");
-                headContent.body.AppendLine("  uint8_t csm_bit;");
-                headContent.body.AppendLine("  uint8_t roll_bit;");
-            }
-
             headContent.body.AppendLine($"}} {utilName}_{v}_t;");
             headContent.body.AppendLine();
             headContent.end.AppendLine();

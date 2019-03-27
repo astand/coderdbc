@@ -210,7 +210,7 @@ namespace CoderDbc.Core
 
             if (msg.CsmSig != null && msg.CsmSig.LengthBit <= 8)
             {
-                srcContent.body.AppendLine("  // make chesksum validation");
+                srcContent.body.AppendLine("  // Check the checksum value");
                 srcContent.body.Append($"  _m->mon1.checksum_error = (GetCrcValueForArray(_d, ");
                 srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
                 srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
