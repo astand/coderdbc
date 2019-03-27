@@ -37,6 +37,26 @@ namespace CoderDbc.Core
             headContent.head.AppendLine("// function signature for getting system tick value (100 us step)");
             headContent.head.AppendLine(@"#include ""canmonitorutil.h""");
             headContent.head.AppendLine();
+            headContent.head.AppendLine();
+
+            if (CodeSett.Code.UseCANFrame == 1)
+            {
+                headContent.head.AppendLine($"// UseCANFrame is checked!");
+                headContent.head.AppendLine($"// In this case the Pack_*name* function will take the pointer at");
+                headContent.head.AppendLine($"// @__CoderDbcCanFrame_t__ data struct and the user must define this ");
+                headContent.head.AppendLine($"// type. The best way is to define it (or typedef if already exists)");
+                headContent.head.AppendLine($"// the CANFrame type with fields:");
+                headContent.head.AppendLine($"//        -- MsgId : uint32_t");
+                headContent.head.AppendLine($"//        -- DLC : uint8_t");
+                headContent.head.AppendLine($"//        -- IDE : uint8_t");
+                headContent.head.AppendLine($"//        -- Data : uint8_t* (with minimum 8 bytes capacity)");
+                headContent.head.AppendLine("");
+                headContent.head.AppendLine($"// Do it in the common dbc config file");
+                headContent.head.AppendLine($"#include \"dbccodeconf.h\"");
+                headContent.head.AppendLine("");
+            }
+
+            headContent.head.AppendLine();
             srcContent.head.AppendLine("#include \"" + incName.ToLower() + ".h\"");
 
             if (CodeSett.Code.UseMonitors == 1)
@@ -84,13 +104,29 @@ namespace CoderDbc.Core
                 GenerateUnpackFunction(msg);
                 srcContent.body.AppendLine("}");
                 srcContent.body.AppendLine();
-                function = $"uint32_t Pack_{msg.MessageName}_{incName}(const {msg.MessageName}_t* _m, uint8_t* _d, uint8_t* _len, uint8_t* _ide)";
-                funcSignatures.Add(function + ";");
-                srcContent.body.AppendLine(function);
-                srcContent.body.AppendLine("{");
-                GeneratePackFunction(msg);
-                srcContent.body.AppendLine("}");
-                srcContent.body.AppendLine();
+
+                if (CodeSett.Code.UseCANFrame == 1)
+                {
+                    // the pointer on the __CoderDbcCanFrame_t__ must be typedefed and
+                    // it is used as a parameter to pass in the function
+                    function = $"uint32_t Pack_{msg.MessageName}_{incName}(const {msg.MessageName}_t* _m, __CoderDbcCanFrame_t__* cframe)";
+                    funcSignatures.Add(function + ";");
+                    srcContent.body.AppendLine(function);
+                    srcContent.body.AppendLine("{");
+                    GenPack_withCanFrame(msg);
+                    srcContent.body.AppendLine("}");
+                    srcContent.body.AppendLine();
+                }
+                else
+                {
+                    function = $"uint32_t Pack_{msg.MessageName}_{incName}(const {msg.MessageName}_t* _m, uint8_t* _d, uint8_t* _len, uint8_t* _ide)";
+                    funcSignatures.Add(function + ";");
+                    srcContent.body.AppendLine(function);
+                    srcContent.body.AppendLine("{");
+                    GenPack_withStdParams(msg);
+                    srcContent.body.AppendLine("}");
+                    srcContent.body.AppendLine();
+                }
             }
 
             foreach (var sig in funcSignatures)
@@ -123,7 +159,6 @@ namespace CoderDbc.Core
             // Delete the file if the setting for UseMonitors != 1
             CreateMonitorFunctionsProtoFile(_files.Dir);
         }
-
 
 
         private void GenerateUnpackFunction(MessageDescriptor msg)
@@ -173,7 +208,31 @@ namespace CoderDbc.Core
         }
 
 
-        private void GeneratePackFunction(MessageDescriptor msg)
+        private void GenPack_withCanFrame(MessageDescriptor msg)
+        {
+            //srcContent.body.AppendLine("  if (_c == 1) { (*(uint32_t*)(_d + 0)) = (*(uint32_t*)(_d + 4)) = 0; }");
+            var clearbuf = String.Empty;
+            clearbuf += "  uint8_t i; for (i = 0; i < ";
+            clearbuf += $"{msg.MessageName}_DLC; ";
+            clearbuf += "cframe->Data[i++] = 0);";
+            srcContent.body.AppendLine(clearbuf);
+            srcContent.body.AppendLine();
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (msg.SigsToByteExpr[i] != null)
+                    srcContent.body.AppendLine($"  cframe->Data[{i}] |= {msg.SigsToByteExpr[i]};");
+            }
+
+            srcContent.body.AppendLine("");
+            srcContent.body.AppendLine($"  cframe->MsgId = {msg.PrintMsgIDName};");
+            srcContent.body.AppendLine($"  cframe->DLC = {msg.DataLen};");
+            srcContent.body.AppendLine($"  cframe->IDE = {msg.IsExtended};");
+            srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
+        }
+
+
+        private void GenPack_withStdParams(MessageDescriptor msg)
         {
             //srcContent.body.AppendLine("  if (_c == 1) { (*(uint32_t*)(_d + 0)) = (*(uint32_t*)(_d + 4)) = 0; }");
             var clearbuf = String.Empty;
