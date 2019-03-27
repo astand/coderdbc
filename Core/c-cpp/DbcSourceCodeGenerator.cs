@@ -16,95 +16,12 @@ namespace CoderDbc.Core
         {
         }
 
-        private void GenerateUnpackFunction(MessageDescriptor msg)
-        {
-            for (int i = 0; i < msg.SigsToByteExpr.Length; i++)
-                msg.SigsToByteExpr[i] = null;
-
-            foreach (var sig in msg.Signals)
-            {
-                var sigLineExpression = $"  _m->{sig.FieldName} = ";
-                var offsetExpr = cprint.PrintUnpackFunctionBody(sig);
-
-                if (CodeSett.NeedOffsetCalc)
-                {
-                    if (sig.Offset < 0)
-                    {
-                        offsetExpr = ($"({cprint.PrintUnpackFunctionBody(sig)}) - {Math.Abs(sig.RawOffset)}");
-                    }
-                    else if (sig.Offset > 0)
-                    {
-                        offsetExpr = ($"({cprint.PrintUnpackFunctionBody(sig)}) + {Math.Abs(sig.RawOffset)}");
-                    }
-                }
-
-                sigLineExpression += offsetExpr + ";";
-                srcContent.body.AppendLine(sigLineExpression);
-
-                for (int i = 0; i < 8; i++)
-                {
-                    // update or create start of PackExpression for this signal for each byte
-                    if (sig.SigToByte[i] == null)
-                        continue;
-
-                    if (msg.SigsToByteExpr[i] == null)
-                        msg.SigsToByteExpr[i] = $"{sig.SigToByte[i]}";
-                    else
-                        msg.SigsToByteExpr[i] += $" | {sig.SigToByte[i]}";
-                }
-            }
-
-            srcContent.body.AppendLine("  // check DLC correctness");
-            srcContent.body.AppendLine($"  _m->mon1.dlc_error = (dlc_ != {msg.MessageName}_DLC);");
-            // check_sum_error
-            if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
-            {
-                srcContent.body.AppendLine($"  // rolling counter validation. The bit @roll_error is 1 when rolling failure.");
-                srcContent.body.AppendLine($"  _m->mon1.roll_error = (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
-                srcContent.body.Append($"  _m->mon1.roll_expect = ((_m->{msg.RollSig.FieldName} + 1) & ");
-                srcContent.body.AppendLine($"0x{((Int32)Math.Pow(2, msg.RollSig.LengthBit) - 1).ToString("X2")}U);");
-            }
-
-            if (msg.CsmSig != null && msg.CsmSig.LengthBit <= 8)
-            {
-                srcContent.body.AppendLine("  // make chesksum validation");
-                srcContent.body.Append($"  _m->mon1.checksum_error = (GetCrcValueForArray(_d, ");
-                srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
-                srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
-            }
-
-            srcContent.body.AppendLine($"  _m->mon1.last_cycle = GetSystem100usTick();");
-
-            if (CodeSett.NeedFrameCounting)
-                srcContent.body.AppendLine("  _m->mon1.frame_cnt++;");
-
-            srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
-        }
-
-        private void GeneratePackFunction(MessageDescriptor msg)
-        {
-            //srcContent.body.AppendLine("  if (_c == 1) { (*(uint32_t*)(_d + 0)) = (*(uint32_t*)(_d + 4)) = 0; }");
-            var clearbuf = String.Empty;
-            clearbuf += "  uint8_t i; for (i = 0; i < ";
-            clearbuf += $"{msg.MessageName}_DLC; ";
-            clearbuf += "_d[i++] = 0);";
-            srcContent.body.AppendLine(clearbuf);
-            srcContent.body.AppendLine();
-
-            for (int i = 0; i < 8; i++)
-            {
-                if (msg.SigsToByteExpr[i] != null)
-                    srcContent.body.AppendLine($"  _d[{i}] |= {msg.SigsToByteExpr[i]};");
-            }
-
-            srcContent.body.AppendLine($"  *_len = {msg.DataLen}; *_ide = {msg.IsExtended};");
-            srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
-        }
 
         public override void Generate(List<MessageDescriptor> messages, string sourcepath, string sourceName, string HeadInfo)
         {
             _files.Dir = sourcepath;
             var incName = $"{sourceName}";
+            nameDrv_ = incName;
             List<string> funcSignatures = new List<string>();
             _files.File = _files.Dir + "/" + incName;
             headContent.head.AppendLine(HeadInfo);
@@ -121,6 +38,38 @@ namespace CoderDbc.Core
             headContent.head.AppendLine(@"#include ""canmonitorutil.h""");
             headContent.head.AppendLine();
             srcContent.head.AppendLine("#include \"" + incName.ToLower() + ".h\"");
+
+            if (CodeSett.Code.UseMonitors == 1)
+            {
+                fmonFile = "fmon-" + incName.ToLower() + ".h";
+                srcContent.head.AppendLine("");
+                srcContent.head.AppendLine("// This include contains the prototypes of the functions that");
+                srcContent.head.AppendLine("// perform the main monitor checkin and notify other clients");
+                srcContent.head.AppendLine("// (e.g. DTC, logic behaviour etc)");
+                srcContent.head.AppendLine("// the *.c source code must be created by end-user or linkage error!");
+                srcContent.head.AppendLine($"#include \"{fmonFile}\"");
+                // clear content
+                fmon_base_content.Clear();
+                fmon_base_content.AppendLine($"// Generated at @{DateTime.Now.ToString("F")}. Ver: 0.1");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("#include <stdint.h>");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("#ifdef __cplusplus");
+                fmon_base_content.AppendLine("extern \"C\" {");
+                fmon_base_content.AppendLine("#endif");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine(@"#include ""canmonitorutil.h""");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("// This file contains the prototypes of all the functions that will be called");
+                fmon_base_content.AppendLine("// from each Unpack_*name* function to detect DBC related errors");
+                fmon_base_content.AppendLine("// It is the user responsibility to defined these functions in the");
+                fmon_base_content.AppendLine("// separated .c file. If it won't be done the linkage error will happen");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("");
+            }
+
             srcContent.head.AppendLine();
 
             foreach (var msg in messages)
@@ -167,10 +116,122 @@ namespace CoderDbc.Core
             var dt = DateTime.Now;
             monitorFile.AppendLine($"// Generated at @{dt.ToString("F")}. Ver: 0.1");
             monitorFile.Append(CanMonitorConfigContent);
-            PrintMonitorText(_files.Dir + "/canmonitorutil.h", monitorFile);
+            CreateMonitorTypeDefinesFile(_files.Dir + "/canmonitorutil.h", monitorFile);
+            // This function will create (overwrite) the header that contains all the
+            // prototypes for the monitoring functions
+            // OR
+            // Delete the file if the setting for UseMonitors != 1
+            CreateMonitorFunctionsProtoFile(_files.Dir);
         }
 
-        private void PrintMonitorText(string v, StringBuilder mfile)
+
+
+        private void GenerateUnpackFunction(MessageDescriptor msg)
+        {
+            for (int i = 0; i < msg.SigsToByteExpr.Length; i++)
+                msg.SigsToByteExpr[i] = null;
+
+            foreach (var sig in msg.Signals)
+            {
+                var sigLineExpression = $"  _m->{sig.FieldName} = ";
+                var offsetExpr = cprint.PrintUnpackFunctionBody(sig);
+
+                if (CodeSett.NeedOffsetCalc)
+                {
+                    if (sig.Offset < 0)
+                    {
+                        offsetExpr = ($"({cprint.PrintUnpackFunctionBody(sig)}) - {Math.Abs(sig.RawOffset)}");
+                    }
+                    else if (sig.Offset > 0)
+                    {
+                        offsetExpr = ($"({cprint.PrintUnpackFunctionBody(sig)}) + {Math.Abs(sig.RawOffset)}");
+                    }
+                }
+
+                sigLineExpression += offsetExpr + ";";
+                srcContent.body.AppendLine(sigLineExpression);
+
+                for (int i = 0; i < 8; i++)
+                {
+                    // update or create start of PackExpression for this signal for each byte
+                    if (sig.SigToByte[i] == null)
+                        continue;
+
+                    if (msg.SigsToByteExpr[i] == null)
+                        msg.SigsToByteExpr[i] = $"{sig.SigToByte[i]}";
+                    else
+                        msg.SigsToByteExpr[i] += $" | {sig.SigToByte[i]}";
+                }
+            }
+
+            if (CodeSett.Code.UseMonitors == 1)
+            {
+                PrintMonitorsForSignals(msg);
+            }
+
+            srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
+        }
+
+
+        private void GeneratePackFunction(MessageDescriptor msg)
+        {
+            //srcContent.body.AppendLine("  if (_c == 1) { (*(uint32_t*)(_d + 0)) = (*(uint32_t*)(_d + 4)) = 0; }");
+            var clearbuf = String.Empty;
+            clearbuf += "  uint8_t i; for (i = 0; i < ";
+            clearbuf += $"{msg.MessageName}_DLC; ";
+            clearbuf += "_d[i++] = 0);";
+            srcContent.body.AppendLine(clearbuf);
+            srcContent.body.AppendLine();
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (msg.SigsToByteExpr[i] != null)
+                    srcContent.body.AppendLine($"  _d[{i}] |= {msg.SigsToByteExpr[i]};");
+            }
+
+            srcContent.body.AppendLine($"  *_len = {msg.DataLen}; *_ide = {msg.IsExtended};");
+            srcContent.body.AppendLine($"  return {msg.PrintMsgIDName};");
+        }
+
+
+        public void PrintMonitorsForSignals(MessageDescriptor msg)
+        {
+            srcContent.body.AppendLine("  // check DLC correctness");
+            srcContent.body.AppendLine($"  _m->mon1.dlc_error = (dlc_ != {msg.MessageName}_DLC);");
+
+            // check_sum_error
+            if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
+            {
+                srcContent.body.AppendLine($"  // rolling counter validation. The bit @roll_error is 1 when rolling failure.");
+                srcContent.body.AppendLine($"  _m->mon1.roll_error = (_m->mon1.roll_expect != _m->{msg.RollSig.FieldName});");
+                srcContent.body.Append($"  _m->mon1.roll_expect = ((_m->{msg.RollSig.FieldName} + 1) & ");
+                srcContent.body.AppendLine($"0x{((Int32)Math.Pow(2, msg.RollSig.LengthBit) - 1).ToString("X2")}U);");
+            }
+
+            if (msg.CsmSig != null && msg.CsmSig.LengthBit <= 8)
+            {
+                srcContent.body.AppendLine("  // make chesksum validation");
+                srcContent.body.Append($"  _m->mon1.checksum_error = (GetCrcValueForArray(_d, ");
+                srcContent.body.Append($"{msg.MessageName}_DLC - 1, {msg.CsmType}, 0) != ");
+                srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
+            }
+
+            srcContent.body.AppendLine($"  _m->mon1.last_cycle = GetSystem100usTick();");
+
+            if (CodeSett.NeedFrameCounting)
+                srcContent.body.AppendLine("  _m->mon1.frame_cnt++;");
+
+            var Fmon_func = "FMon_" + msg.MessageName + ((nameDrv_?.Length > 0) ? $"_{nameDrv_}" : "");
+            srcContent.body.AppendLine("");
+            srcContent.body.AppendLine($"  // Calling monitor function for @{msg.MessageName}");
+            srcContent.body.AppendLine($"  {Fmon_func}(&_m->mon1);");
+            // put the prototype in the header of monitors functions
+            fmon_base_content.AppendLine($"void {Fmon_func}(FrameMonitor_t* _mon);");
+        }
+
+
+
+        private void CreateMonitorTypeDefinesFile(string v, StringBuilder mfile)
         {
             if (File.Exists(v))
             {
@@ -181,6 +242,32 @@ namespace CoderDbc.Core
             File.WriteAllText(v, mfile.ToString(), Encoding.UTF8);
             File.SetAttributes(v, FileAttributes.ReadOnly);
         }
+
+
+        private void CreateMonitorFunctionsProtoFile(string dir)
+        {
+            var monfilepath = dir + "\\" + fmonFile;
+
+            if (File.Exists(monfilepath))
+            {
+                File.Delete(monfilepath);
+            }
+
+            if (CodeSett.Code.UseMonitors == 1)
+            {
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("#ifdef __cplusplus");
+                fmon_base_content.AppendLine("}");
+                fmon_base_content.AppendLine("#endif");
+                fmon_base_content.AppendLine("");
+                // create new monitor file
+                (File.Create(monfilepath)).Close();
+                File.WriteAllText(monfilepath, fmon_base_content.ToString());
+                File.SetAttributes(monfilepath, FileAttributes.ReadOnly);
+            }
+        }
+
 
         private void PrintHeadTypedef(MessageDescriptor msg)
         {
@@ -226,14 +313,19 @@ namespace CoderDbc.Core
                 headContent.body.AppendLine(cprint.PrintSignalType(sig, max_len));
             }
 
-            if (CodeSett.NeedFrameCounting)
+            if (CodeSett.Code.UseMonitors == 1)
                 headContent.body.AppendLine("  FrameMonitor_t mon1;");
 
             headContent.body.AppendLine("} " + msg.MessageName + "_t;");
             headContent.body.AppendLine();
         }
 
+        private StringBuilder fmon_base_content = new StringBuilder(4096);
+
         CSignalPrinter cprint = new CSignalPrinter();
+
+        private string nameDrv_ = "";
+        private string fmonFile = "";
         private readonly string CanMonitorConfigContent =
             @"// This file has the common name. When a few DBC source code drivers are used you need to
 // provide only one copy of it.
