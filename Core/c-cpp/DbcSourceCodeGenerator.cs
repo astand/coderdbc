@@ -70,6 +70,7 @@ namespace CoderDbc.Core
                 srcContent.head.AppendLine($"#include \"{fmonFile}\"");
                 // clear content
                 fmon_base_content.Clear();
+                fmon_funcs_proto.Clear();
                 fmon_base_content.AppendLine($"// Generated at @{DateTime.Now.ToString("F")}. Ver: 0.1");
                 fmon_base_content.AppendLine("");
                 fmon_base_content.AppendLine("");
@@ -256,7 +257,7 @@ namespace CoderDbc.Core
         public void PrintMonitorsForSignals(MessageDescriptor msg)
         {
             srcContent.body.AppendLine("  // check DLC correctness");
-            srcContent.body.AppendLine($"  _m->mon1.dlc_error = (dlc_ != {msg.MessageName}_DLC);");
+            srcContent.body.AppendLine($"  _m->mon1.dlc_error = (dlc_ < {msg.MessageName}_DLC);");
 
             // check_sum_error
             if (msg.RollSig != null && msg.RollSig.LengthBit <= 8)
@@ -275,17 +276,14 @@ namespace CoderDbc.Core
                 srcContent.body.AppendLine($"(_m->{msg.CsmSig.FieldName}));");
             }
 
-            srcContent.body.AppendLine($"  _m->mon1.last_cycle = GetSystem100usTick();");
-
-            if (CodeSett.NeedFrameCounting)
-                srcContent.body.AppendLine("  _m->mon1.frame_cnt++;");
-
+            srcContent.body.AppendLine($"  _m->mon1.last_cycle = {GetTickFuncName}();");
+            srcContent.body.AppendLine("  _m->mon1.frame_cnt++;");
             var Fmon_func = "FMon_" + msg.MessageName + ((nameDrv_?.Length > 0) ? $"_{nameDrv_}" : "");
             srcContent.body.AppendLine("");
             srcContent.body.AppendLine($"  // Calling monitor function for @{msg.MessageName}");
             srcContent.body.AppendLine($"  {Fmon_func}(&_m->mon1);");
             // put the prototype in the header of monitors functions
-            fmon_base_content.AppendLine($"void {Fmon_func}(FrameMonitor_t* _mon);");
+            fmon_funcs_proto.Add($"void { Fmon_func}(FrameMonitor_t * _mon); ");
         }
 
 
@@ -314,6 +312,13 @@ namespace CoderDbc.Core
 
             if (CodeSett.Code.UseMonitors == 1)
             {
+                fmon_funcs_proto.Sort();
+
+                foreach (var fproto in fmon_funcs_proto)
+                {
+                    fmon_base_content.AppendLine(fproto);
+                }
+
                 fmon_base_content.AppendLine("");
                 fmon_base_content.AppendLine("");
                 fmon_base_content.AppendLine("#ifdef __cplusplus");
@@ -381,10 +386,15 @@ namespace CoderDbc.Core
 
         private StringBuilder fmon_base_content = new StringBuilder(4096);
 
+        private List<string> fmon_funcs_proto = new List<string>();
+
         CSignalPrinter cprint = new CSignalPrinter();
 
         private string nameDrv_ = "";
         private string fmonFile = "";
+
+        private static readonly string GetTickFuncName = "GetSystemTick";
+
         private readonly string CanMonitorConfigContent =
             @"// This file has the common name. When a few DBC source code drivers are used you need to
 // provide only one copy of it.
@@ -444,14 +454,14 @@ uint8_t GetCrcValueForArray(const uint8_t* d, uint8_t len, uint32_t method, uint
 /* ----------------------------------------------------------------------------- */
 // this function will be called when unpacking is performing. Value will be saved
 // in @last_cycle variable
-uint32_t GetSystem100usTick(void);
+uint32_t " + GetTickFuncName + @"(void);
 
-void StepSystem100usTick(uint32_t _100us);
 
 #ifdef __cplusplus
 }
 #endif
 ";
+
 
     }
 }
