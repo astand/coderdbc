@@ -374,7 +374,7 @@ namespace CoderDbc.Core
 
             foreach (var sig in msg.Signals)
             {
-                headContent.body.AppendLine(cprint.PrintSignalType(sig, max_len));
+                headContent.body.AppendLine(cprint.PrintSignalType(sig, max_len, CodeSett.Code.UseBitField == 1));
             }
 
             if (CodeSett.Code.UseMonitors == 1)

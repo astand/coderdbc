@@ -88,7 +88,7 @@ namespace CoderDbc.Core
             return sb.ToString();
         }
 
-        public string PrintSignalType(SignalBitsDesc sig, Int32 pad_sig_name)
+        public string PrintSignalType(SignalBitsDesc sig, Int32 pad_sig_name, bool bitfield)
         {
             sb.Clear();
             sb.AppendLine();
@@ -103,7 +103,17 @@ namespace CoderDbc.Core
                 sb.AppendLine(sig.ValueText);
             }
 
-            sb.Append(($"  {__typeprint[(int)sig.SigType]} {sig.FieldName};").PadRight(pad_sig_name + 13));
+            var dtype = "";
+            dtype += $"  {__typeprint[(int)sig.SigType]} {sig.FieldName}";
+
+            if (bitfield && (sig.LengthBit < 8))
+            {
+                dtype += $" : {sig.LengthBit}";
+            }
+
+            dtype += ";";
+            dtype = dtype.PadRight(pad_sig_name + 16);
+            sb.Append(dtype);
             string comment = $" // ";
             comment += (sig.Signed) ? " [-]" : "    ";
             comment += $" Bits={sig.LengthBit:D2}. ";
