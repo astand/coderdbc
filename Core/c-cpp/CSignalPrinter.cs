@@ -151,7 +151,9 @@ namespace CoderDbc.Core
             }
 
             sb.Append($"// signal: @{sig.FieldName}" + Environment.NewLine);
+            sb.Append($"ifndef {sig.FieldName}_CovFactor" + Environment.NewLine);
             sb.Append($"#define {sig.FieldName}_CovFactor {sig.Factor}" + Environment.NewLine);
+            sb.Append($"endif" + Environment.NewLine);
             sb.Append("#define ");
             sb.Append($"{sig.FieldName}_CovS(x) ");
             var str = String.Empty;
