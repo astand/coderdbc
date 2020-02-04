@@ -71,24 +71,8 @@ namespace CoderDbc.Core
                 // clear content
                 fmon_base_content.Clear();
                 fmon_funcs_proto.Clear();
-                fmon_base_content.AppendLine($"// Generated at @{DateTime.Now.ToString("F")}. Ver: 0.1");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("#include <stdint.h>");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("#ifdef __cplusplus");
-                fmon_base_content.AppendLine("extern \"C\" {");
-                fmon_base_content.AppendLine("#endif");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine(@"#include ""canmonitorutil.h""");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("// This file contains the prototypes of all the functions that will be called");
-                fmon_base_content.AppendLine("// from each Unpack_*name* function to detect DBC related errors");
-                fmon_base_content.AppendLine("// It is the user responsibility to defined these functions in the");
-                fmon_base_content.AppendLine("// separated .c file. If it won't be done the linkage error will happen");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("");
+
+
             }
 
             srcContent.head.AppendLine();
@@ -312,6 +296,17 @@ namespace CoderDbc.Core
 
             if (CodeSett.Code.UseMonitors == 1)
             {
+                fmon_base_content.AppendLine($"// Generated at @{DateTime.Now.ToString("F")}. Ver: 0.1");
+                fmon_base_content.AppendLine(TemplateSourceInfo.GuardInclude);
+                fmon_base_content.AppendLine(TemplateSourceInfo.CPPGuardOpen);
+                fmon_base_content.AppendLine("#include <stdint.h>");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine(@"#include ""canmonitorutil.h""");
+                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine("// This file contains the prototypes of all the functions that will be called");
+                fmon_base_content.AppendLine("// from each Unpack_*name* function to detect DBC related errors");
+                fmon_base_content.AppendLine("// It is the user responsibility to defined these functions in the");
+                fmon_base_content.AppendLine("// separated .c file. If it won't be done the linkage error will happen");
                 fmon_funcs_proto.Sort();
 
                 foreach (var fproto in fmon_funcs_proto)
@@ -319,12 +314,7 @@ namespace CoderDbc.Core
                     fmon_base_content.AppendLine(fproto);
                 }
 
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("");
-                fmon_base_content.AppendLine("#ifdef __cplusplus");
-                fmon_base_content.AppendLine("}");
-                fmon_base_content.AppendLine("#endif");
-                fmon_base_content.AppendLine("");
+                fmon_base_content.AppendLine(TemplateSourceInfo.CPPGuardClose);
                 // create new monitor file
                 (File.Create(monfilepath)).Close();
                 File.WriteAllText(monfilepath, fmon_base_content.ToString());
