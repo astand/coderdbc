@@ -342,7 +342,7 @@ namespace CoderDbc.Core
 
             foreach (var sig in msg.Signals)
             {
-                string ret = cprint.PrintSignalPackExpression(sig);
+                string ret = cprint.PrintSignalPackExpression(sig, msg.MessageName);
 
                 if (ret != null)
                 {

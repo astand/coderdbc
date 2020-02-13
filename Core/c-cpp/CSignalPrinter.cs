@@ -141,8 +141,10 @@ namespace CoderDbc.Core
             return sb.ToString() + comment;
         }
 
-        public string PrintSignalPackExpression(SignalBitsDesc sig)
+        public string PrintSignalPackExpression(SignalBitsDesc sig, string nameprefix)
         {
+            var newline = Environment.NewLine;
+            var signame = nameprefix + "_" + sig.FieldName;
             sb.Clear();
 
             if (sig.Offset == 0 && sig.Factor == 1)
@@ -150,16 +152,16 @@ namespace CoderDbc.Core
                 return null;
             }
 
-            sb.Append($"// signal: @{sig.FieldName}" + Environment.NewLine);
-            sb.Append($"ifndef {sig.FieldName}_CovFactor" + Environment.NewLine);
-            sb.Append($"#define {sig.FieldName}_CovFactor {sig.Factor}" + Environment.NewLine);
-            sb.Append($"endif" + Environment.NewLine);
-            sb.Append("#define ");
-            sb.Append($"{sig.FieldName}_CovS(x) ");
+            sb.Append($"// signal: @{sig.FieldName}" + newline);
+            sb.Append($"#define {signame}_CovFactor ({sig.Factor})" + newline);
+            sb.AppendLine("// conversion value to CAN signal");
+            sb.Append($"#define {signame}_toS(x) ");
+
+            // Generate macro for conversion value to CAN signal
             var str = String.Empty;
 
             if (sig.Factor != 1)
-                str += $"(x / {sig.Factor})";
+                str += $"x / {sig.Factor}";
             else
                 str += "x";
 
@@ -178,7 +180,23 @@ namespace CoderDbc.Core
             {
             }
 
-            sb.Append($"(({__typeprint[(int)sig.SigType]})({str}))");
+            sb.AppendLine($"(({__typeprint[(int)sig.SigType]})({str}))");
+
+            // Generate macro for conversion CAN signal to valuetoSig
+            sb.AppendLine("// conversion value from CAN signal");
+            sb.Append($"#define {signame}_fromS(x) ");
+            str = String.Empty;
+            if (sig.Factor != 1)
+            {
+                str += $"x * {sig.Factor}";
+            }
+            else
+            {
+                str += "x";
+            }
+            sb.AppendLine($"({str})");
+
+
             return sb.ToString();
         }
 
