@@ -13,13 +13,13 @@ namespace CoderDbc.Core
         {
             _files.Dir = sourcepath;
             var sourcename = $"{sourceName}";
-            _files.File = _files.Dir + "/" + sourcename + utilName;
+            _files.File = _files.Dir + "/" + sourcename.ToLower() + utilName;
             headFile.Clear();
             sourceFile.Clear();
             headContent.head.AppendLine(HeadInfo);
             headContent.head.AppendLine(TemplateSourceInfo.GuardInclude);
             headContent.head.AppendLine(TemplateSourceInfo.CPPGuardOpen);
-            headContent.head.AppendLine(@"#include """ + sourcename + @".h""");
+            headContent.head.AppendLine(@"#include """ + sourcename.ToLower() + @".h""");
             headContent.head.AppendLine();
             headContent.head.AppendLine("// @dbccodeconf.h file should be placed in inc folder. If the user wants");
             headContent.head.AppendLine("// to allocate big DBC struct inside the driver - appropriate define (__DEF_xxxxx__)");

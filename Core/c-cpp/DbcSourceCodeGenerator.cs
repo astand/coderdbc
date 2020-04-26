@@ -23,7 +23,7 @@ namespace CoderDbc.Core
             var incName = $"{sourceName}";
             nameDrv_ = incName;
             List<string> funcSignatures = new List<string>();
-            _files.File = _files.Dir + "/" + incName;
+            _files.File = _files.Dir + "/" + incName.ToLower();
             headContent.head.AppendLine(HeadInfo);
             srcContent.head.AppendLine(HeadInfo);
             headContent.head.AppendLine(TemplateSourceInfo.GuardInclude);
@@ -71,8 +71,6 @@ namespace CoderDbc.Core
                 // clear content
                 fmon_base_content.Clear();
                 fmon_funcs_proto.Clear();
-
-
             }
 
             srcContent.head.AppendLine();
@@ -195,7 +193,6 @@ namespace CoderDbc.Core
 
         private void GenPack_withCanFrame(MessageDescriptor msg)
         {
-            //srcContent.body.AppendLine("  if (_c == 1) { (*(uint32_t*)(_d + 0)) = (*(uint32_t*)(_d + 4)) = 0; }");
             var clearbuf = String.Empty;
             clearbuf += "  uint8_t i; for (i = 0; i < ";
             clearbuf += $"{msg.MessageName}_DLC; ";
@@ -219,7 +216,6 @@ namespace CoderDbc.Core
 
         private void GenPack_withStdParams(MessageDescriptor msg)
         {
-            //srcContent.body.AppendLine("  if (_c == 1) { (*(uint32_t*)(_d + 0)) = (*(uint32_t*)(_d + 4)) = 0; }");
             var clearbuf = String.Empty;
             clearbuf += "  uint8_t i; for (i = 0; i < ";
             clearbuf += $"{msg.MessageName}_DLC; ";
