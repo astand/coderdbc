@@ -161,9 +161,9 @@ namespace CoderDbc.Core
             var str = String.Empty;
 
             if (sig.Factor != 1)
-                str += $"x / {sig.Factor}";
+                str += $"(x) / {sig.Factor}";
             else
-                str += "x";
+                str += "(x)";
 
             if (sig.Offset != 0)
             {
@@ -188,11 +188,11 @@ namespace CoderDbc.Core
             str = String.Empty;
             if (sig.Factor != 1)
             {
-                str += $"x * {sig.Factor}";
+                str += $"(x) * {sig.Factor}";
             }
             else
             {
-                str += "x";
+                str += "(x)";
             }
             sb.AppendLine($"({str})");
 
